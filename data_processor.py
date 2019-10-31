@@ -674,7 +674,7 @@ def generator(FLAGS):
                 crop_background = np.random.rand() < background_ratio
                 image, text_polys, text_tags = crop_area(FLAGS, image, text_polys, text_tags,
                                                          crop_background=crop_background)
-                if np.random.rand() < background_ratio:
+                if crop_background:
                     if text_polys.shape[0] > 0:
                         continue
                     image, _, _ = pad_image(image, FLAGS.input_size, is_train=True)
