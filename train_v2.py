@@ -64,7 +64,7 @@ def main():
 
     tb_callback = tensorboard_callback()
     checkpoint_callback = ModelCheckpoint(
-        filepath=os.path.join(FLAGS.checkpoint_path, 'model-{epoch:02d}-{val_accuracy:.2f}.h5'),
+        filepath=os.path.join(FLAGS.checkpoint_path, 'model-{epoch:02d}-{val_loss:.2f}.h5'),
         monitor='val_loss',
         save_best_only=True,
         verbose=0,
