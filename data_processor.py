@@ -1,16 +1,11 @@
 import os
 import re
-import itertools
-import traceback
-from multiprocessing import Pool
 
 import cv2
 import numpy as np
 
 from shapely.geometry import Polygon
 
-
-# %%
 
 def get_image_paths(data_path):
     allowed_extensions = ['jpg', 'png', 'jpeg', 'JPG']
@@ -22,6 +17,28 @@ def get_image_paths(data_path):
 def get_text_file_path(image_path):
     text_file_path = image_path.replace(os.path.basename(image_path).split('.')[1], 'txt')
     return text_file_path
+
+
+def load_annotation(txt_path):
+    if not os.path.exists(txt_path):
+        return np.array([], dtype=np.float32), np.array([], dtype=np.bool)
+
+    file = open(txt_path)
+    lines = file.readlines()
+    file.close()
+
+    def parse(line):
+        line = line.split(',')
+        x1, y1, x2, y2, x3, y3, x4, y4 = list(map(lambda item: float(re.sub(r'[^0-9.]+', '', item)), line[:8]))
+        a = [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
+        text = line[8].strip()
+        b = text == '*' or text == '###'
+        return a, b
+
+    parsed = list(map(parse, lines))
+    text_polys = [i[0] for i in parsed]
+    text_tags = [i[1] for i in parsed]
+    return np.array(text_polys, dtype=np.float32), np.array(text_tags, dtype=np.bool)
 
 
 # %%
@@ -364,27 +381,6 @@ def generate_rbox(FLAGS, im_size, polys, tags):
 
 # %%
 
-def load_annotation(txt_path):
-    if not os.path.exists(txt_path):
-        return np.array([], dtype=np.float32), np.array([], dtype=np.bool)
-
-    file = open(txt_path)
-    lines = file.readlines()
-    file.close()
-
-    def parse(line):
-        line = line.split(',')
-        x1, y1, x2, y2, x3, y3, x4, y4 = list(map(lambda item: float(re.sub(r'[^0-9.]+', '', item)), line[:8]))
-        a = [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
-        text = line[8].strip()
-        b = text == '*' or text == '###'
-        return a, b
-
-    parsed = list(map(parse, lines))
-    text_polys = [i[0] for i in parsed]
-    text_tags = [i[1] for i in parsed]
-    return np.array(text_polys, dtype=np.float32), np.array(text_tags, dtype=np.bool)
-
 
 def polygon_area(poly):
     edge = [
@@ -445,6 +441,62 @@ def resize_image(img, text_polys, input_size, shift_h, shift_w):
     text_polys[:, :, 0] *= resize_ratio_3_x
     text_polys[:, :, 1] *= resize_ratio_3_y
     return img, text_polys
+
+
+def crop_area(FLAGS, im, polys, tags, crop_background=False, max_tries=50):
+    # make random crop from the input image
+    h, w, _ = im.shape
+    pad_h = h // 10
+    pad_w = w // 10
+    h_array = np.zeros((h + pad_h * 2), dtype=np.int32)
+    w_array = np.zeros((w + pad_w * 2), dtype=np.int32)
+    for poly in polys:
+        poly = np.round(poly, decimals=0).astype(np.int32)
+        minx = np.min(poly[:, 0])
+        maxx = np.max(poly[:, 0])
+        w_array[minx + pad_w:maxx + pad_w] = 1
+        miny = np.min(poly[:, 1])
+        maxy = np.max(poly[:, 1])
+        h_array[miny + pad_h:maxy + pad_h] = 1
+    # ensure the cropped area not across a text
+    h_axis = np.where(h_array == 0)[0]
+    w_axis = np.where(w_array == 0)[0]
+    if len(h_axis) == 0 or len(w_axis) == 0:
+        return im, polys, tags
+    for i in range(max_tries):
+        xx = np.random.choice(w_axis, size=2)
+        xmin = np.min(xx) - pad_w
+        xmax = np.max(xx) - pad_w
+        xmin = np.clip(xmin, 0, w - 1)
+        xmax = np.clip(xmax, 0, w - 1)
+        yy = np.random.choice(h_axis, size=2)
+        ymin = np.min(yy) - pad_h
+        ymax = np.max(yy) - pad_h
+        ymin = np.clip(ymin, 0, h - 1)
+        ymax = np.clip(ymax, 0, h - 1)
+        if xmax - xmin < FLAGS.min_crop_side_ratio * w or ymax - ymin < FLAGS.min_crop_side_ratio * h:
+            # area too small
+            continue
+        if polys.shape[0] != 0:
+            poly_axis_in_area = (polys[:, :, 0] >= xmin) & (polys[:, :, 0] <= xmax) \
+                                & (polys[:, :, 1] >= ymin) & (polys[:, :, 1] <= ymax)
+            selected_polys = np.where(np.sum(poly_axis_in_area, axis=1) == 4)[0]
+        else:
+            selected_polys = []
+        if len(selected_polys) == 0:
+            # no text in this area
+            if crop_background:
+                return im[ymin:ymax + 1, xmin:xmax + 1, :], polys[selected_polys], tags[selected_polys]
+            else:
+                continue
+        im = im[ymin:ymax + 1, xmin:xmax + 1, :]
+        polys = polys[selected_polys]
+        tags = tags[selected_polys]
+        polys[:, :, 0] -= xmin
+        polys[:, :, 1] -= ymin
+        return im, polys, tags
+
+    return im, polys, tags
 
 
 # %%
@@ -525,65 +577,12 @@ def restore_rectangle(origin, geometry):
     return restore_rectangle_rbox(origin, geometry)
 
 
-# %%
+# %% TODO - remove these, they are not used in train_v2
 
-def crop_area(FLAGS, im, polys, tags, crop_background=False, max_tries=50):
-    # make random crop from the input image
-    h, w, _ = im.shape
-    pad_h = h // 10
-    pad_w = w // 10
-    h_array = np.zeros((h + pad_h * 2), dtype=np.int32)
-    w_array = np.zeros((w + pad_w * 2), dtype=np.int32)
-    for poly in polys:
-        poly = np.round(poly, decimals=0).astype(np.int32)
-        minx = np.min(poly[:, 0])
-        maxx = np.max(poly[:, 0])
-        w_array[minx + pad_w:maxx + pad_w] = 1
-        miny = np.min(poly[:, 1])
-        maxy = np.max(poly[:, 1])
-        h_array[miny + pad_h:maxy + pad_h] = 1
-    # ensure the cropped area not across a text
-    h_axis = np.where(h_array == 0)[0]
-    w_axis = np.where(w_array == 0)[0]
-    if len(h_axis) == 0 or len(w_axis) == 0:
-        return im, polys, tags
-    for i in range(max_tries):
-        xx = np.random.choice(w_axis, size=2)
-        xmin = np.min(xx) - pad_w
-        xmax = np.max(xx) - pad_w
-        xmin = np.clip(xmin, 0, w - 1)
-        xmax = np.clip(xmax, 0, w - 1)
-        yy = np.random.choice(h_axis, size=2)
-        ymin = np.min(yy) - pad_h
-        ymax = np.max(yy) - pad_h
-        ymin = np.clip(ymin, 0, h - 1)
-        ymax = np.clip(ymax, 0, h - 1)
-        if xmax - xmin < FLAGS.min_crop_side_ratio * w or ymax - ymin < FLAGS.min_crop_side_ratio * h:
-            # area too small
-            continue
-        if polys.shape[0] != 0:
-            poly_axis_in_area = (polys[:, :, 0] >= xmin) & (polys[:, :, 0] <= xmax) \
-                                & (polys[:, :, 1] >= ymin) & (polys[:, :, 1] <= ymax)
-            selected_polys = np.where(np.sum(poly_axis_in_area, axis=1) == 4)[0]
-        else:
-            selected_polys = []
-        if len(selected_polys) == 0:
-            # no text in this area
-            if crop_background:
-                return im[ymin:ymax + 1, xmin:xmax + 1, :], polys[selected_polys], tags[selected_polys]
-            else:
-                continue
-        im = im[ymin:ymax + 1, xmin:xmax + 1, :]
-        polys = polys[selected_polys]
-        tags = tags[selected_polys]
-        polys[:, :, 0] -= xmin
-        polys[:, :, 1] -= ymin
-        return im, polys, tags
+import traceback
+import itertools
+from multiprocessing import Pool
 
-    return im, polys, tags
-
-
-# %%
 
 def load_val_data_util(args):
     FLAGS, image_path = args
@@ -636,8 +635,6 @@ def load_val_data(FLAGS):
     return np.array(images), np.array(overly_small_text_region_training_masks), np.array(
         text_region_boundary_training_masks), np.array(score_maps), np.array(geo_maps)
 
-
-# %%
 
 def generator(FLAGS):
     image_paths = np.array(get_image_paths(FLAGS.training_data_path))
