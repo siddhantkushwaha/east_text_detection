@@ -29,12 +29,7 @@ class DataGenerator(Sequence):
         batch_image_paths = self.image_paths[index * self.batch_size:(index + 1) * self.batch_size]
         for image_path in batch_image_paths:
             try:
-
-                if self.is_train:
-                    res = self.train_parse(image_path)
-                else:
-                    res = self.validation_parse(image_path)
-
+                res = self.load_training(image_path) if self.is_train else self.load_validation(image_path)
                 if res is not None:
                     image, score_map, geo_map, overly_small_text_region_training_mask, text_region_boundary_training_mask = res
                     images.append(image)
@@ -42,7 +37,6 @@ class DataGenerator(Sequence):
                     geo_maps.append(geo_map)
                     overly_small_text_region_training_masks.append(overly_small_text_region_training_mask)
                     text_region_boundary_training_masks.append(text_region_boundary_training_mask)
-
             except Exception:
                 traceback.print_exc()
 
@@ -56,7 +50,7 @@ class DataGenerator(Sequence):
     def on_epoch_end(self):
         np.random.shuffle(self.image_paths)
 
-    def train_parse(self, image_path):
+    def load_training(self, image_path):
         FLAGS = self.FLAGS
 
         image = cv2.imread(image_path)
@@ -113,7 +107,7 @@ class DataGenerator(Sequence):
             text_region_boundary_training_mask[::4, ::4, np.newaxis].astype(np.float32),
         )
 
-    def validation_parse(self, image_path):
+    def load_validation(self, image_path):
         FLAGS = self.FLAGS
 
         image = cv2.imread(image_path)
@@ -133,10 +127,9 @@ class DataGenerator(Sequence):
             FLAGS, (new_h, new_w), text_polys, text_tags)
 
         image = (image / 127.5) - 1.
-
         return (
             image[:, :, ::-1].astype(np.float32),
-            score_map[::4, ::4, np.newaxis].astype(np.float32), geo_map[::4, ::4, :].astype(np.float32),
+            score_map[::4, ::4, np.newaxis].astype(np.float32),
             geo_map[::4, ::4, :].astype(np.float32),
             overly_small_text_region_training_mask[::4, ::4, np.newaxis].astype(np.float32),
             text_region_boundary_training_mask[::4, ::4, np.newaxis].astype(np.float32)
