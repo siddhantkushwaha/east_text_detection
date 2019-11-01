@@ -1,11 +1,11 @@
 import os
+import re
 import itertools
 import traceback
 from multiprocessing import Pool
 
 import cv2
 import numpy as np
-import pandas as pd
 
 from shapely.geometry import Polygon
 
@@ -368,15 +368,19 @@ def load_annotation(txt_path):
     if not os.path.exists(txt_path):
         return np.array([], dtype=np.float32), np.array([], dtype=np.bool)
 
-    df = pd.read_csv(txt_path, header=None)
+    file = open(txt_path)
+    lines = file.readlines()
+    file.close()
 
-    def parse(row):
-        x1, y1, x2, y2, x3, y3, x4, y4 = list(map(float, row[:8]))
+    def parse(line):
+        line = line.split(',')
+        x1, y1, x2, y2, x3, y3, x4, y4 = list(map(lambda item: float(re.sub(r'[^0-9.]+', '', item)), line[:8]))
         a = [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
-        b = row[8] == '*' or row[8] == '###'
+        text = line[8].strip()
+        b = text == '*' or text == '###'
         return a, b
 
-    parsed = df.apply(parse, axis=1)
+    parsed = list(map(parse, lines))
     text_polys = [i[0] for i in parsed]
     text_tags = [i[1] for i in parsed]
     return np.array(text_polys, dtype=np.float32), np.array(text_tags, dtype=np.bool)
