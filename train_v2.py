@@ -41,7 +41,7 @@ FLAGS = parser.parse_args()
 
 def tensorboard_callback():
     log_dir = "logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
-    callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
+    callback = TensorBoard(log_dir=log_dir)
     return callback
 
 
@@ -67,12 +67,12 @@ def main():
         ],
         loss_weights=[1., 1.],
         optimizer=opt,
-        metrics=['accuracy']
     )
 
     tb_callback = tensorboard_callback()
     checkpoint_callback = ModelCheckpoint(
         filepath=os.path.join(FLAGS.checkpoint_path, 'model-{epoch:02d}-{val_accuracy:.2f}.h5'),
+        monitor='val_loss',
         save_best_only=True,
         verbose=0,
         save_weights_only=False,
