@@ -54,9 +54,15 @@ def main():
         loss_weights=[1., 1.],
         optimizer=opt)
 
-    hist = east.model.fit_generator(generator=train_data_generator, epochs=FLAGS.max_epochs,
-                                    steps_per_epoch=train_samples_count // FLAGS.batch_size, workers=FLAGS.nb_workers,
-                                    verbose=1)
+    hist = east.model.fit_generator(
+        generator=train_data_generator,
+        epochs=FLAGS.max_epochs,
+        steps_per_epoch=train_samples_count // FLAGS.batch_size,
+        workers=FLAGS.nb_workers,
+        use_multiprocessing=True,
+        max_queue_size=10,
+        verbose=1,
+    )
 
     print(hist)
 

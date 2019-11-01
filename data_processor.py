@@ -443,60 +443,7 @@ def resize_image(img, text_polys, input_size, shift_h, shift_w):
     return img, text_polys
 
 
-def load_val_data_util(args):
-    FLAGS, image_path = args
-    try:
-        img = cv2.imread(image_path)
-        h, w, _ = img.shape
-        txt_path = get_text_file_path(image_path)
-        if not os.path.exists(txt_path):
-            print('Text file {} does not exists'.format(txt_path))
-
-        text_polys, text_tags = load_annotation(txt_path)
-        text_polys, text_tags = check_and_validate_polys(FLAGS, text_polys, text_tags, (h, w))
-        img, shift_h, shift_w = pad_image(img, FLAGS.input_size, is_train=False)
-        img, text_polys = resize_image(img, text_polys, FLAGS.input_size, shift_h, shift_w)
-        new_h, new_w, _ = img.shape
-
-        score_map, geo_map, overly_small_text_region_training_mask, text_region_boundary_training_mask = generate_rbox(
-            FLAGS, (new_h, new_w), text_polys, text_tags)
-
-        img = (img / 127.5) - 1.
-
-        return img[:, :, ::-1].astype(np.float32), image_path, score_map[::4, ::4, np.newaxis].astype(
-            np.float32), geo_map[::4, ::4, :].astype(np.float32), overly_small_text_region_training_mask[::4, ::4,
-                                                                  np.newaxis].astype(
-            np.float32), text_region_boundary_training_mask[::4, ::4, np.newaxis].astype(np.float32)
-    except Exception:
-        if not FLAGS.suppress_warnings_and_error_messages:
-            traceback.print_exc()
-
-
-def load_val_data(FLAGS):
-    image_files = np.array(get_image_paths(FLAGS.validation_data_path))
-
-    pool = Pool(FLAGS.nb_workers)
-    loaded_data = pool.map_async(load_val_data_util,
-                                 zip(itertools.repeat(FLAGS), image_files)).get(
-        timeout=9999999)
-
-    pool.close()
-    pool.join()
-
-    images = [item[0] for item in loaded_data if item is not None]
-    score_maps = [item[2] for item in loaded_data if item is not None]
-    geo_maps = [item[3] for item in loaded_data if item is not None]
-    overly_small_text_region_training_masks = [item[4] for item in loaded_data if item is not None]
-    text_region_boundary_training_masks = [item[5] for item in loaded_data if item is not None]
-
-    print('Number of validation images : %d' % len(images))
-
-    return np.array(images), np.array(overly_small_text_region_training_masks), np.array(
-        text_region_boundary_training_masks), np.array(score_maps), np.array(geo_maps)
-
-
 # %%
-
 
 def restore_rectangle_rbox(origin, geometry):
     d = geometry[:, :4]
@@ -631,6 +578,62 @@ def crop_area(FLAGS, im, polys, tags, crop_background=False, max_tries=50):
 
     return im, polys, tags
 
+
+# %%
+
+def load_val_data_util(args):
+    FLAGS, image_path = args
+    try:
+        img = cv2.imread(image_path)
+        h, w, _ = img.shape
+        txt_path = get_text_file_path(image_path)
+        if not os.path.exists(txt_path):
+            print('Text file {} does not exists'.format(txt_path))
+
+        text_polys, text_tags = load_annotation(txt_path)
+        text_polys, text_tags = check_and_validate_polys(FLAGS, text_polys, text_tags, (h, w))
+        img, shift_h, shift_w = pad_image(img, FLAGS.input_size, is_train=False)
+        img, text_polys = resize_image(img, text_polys, FLAGS.input_size, shift_h, shift_w)
+        new_h, new_w, _ = img.shape
+
+        score_map, geo_map, overly_small_text_region_training_mask, text_region_boundary_training_mask = generate_rbox(
+            FLAGS, (new_h, new_w), text_polys, text_tags)
+
+        img = (img / 127.5) - 1.
+
+        return img[:, :, ::-1].astype(np.float32), image_path, score_map[::4, ::4, np.newaxis].astype(
+            np.float32), geo_map[::4, ::4, :].astype(np.float32), overly_small_text_region_training_mask[::4, ::4,
+                                                                  np.newaxis].astype(
+            np.float32), text_region_boundary_training_mask[::4, ::4, np.newaxis].astype(np.float32)
+    except Exception:
+        if not FLAGS.suppress_warnings_and_error_messages:
+            traceback.print_exc()
+
+
+def load_val_data(FLAGS):
+    image_files = np.array(get_image_paths(FLAGS.validation_data_path))
+
+    pool = Pool(FLAGS.nb_workers)
+    loaded_data = pool.map_async(load_val_data_util,
+                                 zip(itertools.repeat(FLAGS), image_files)).get(
+        timeout=9999999)
+
+    pool.close()
+    pool.join()
+
+    images = [item[0] for item in loaded_data if item is not None]
+    score_maps = [item[2] for item in loaded_data if item is not None]
+    geo_maps = [item[3] for item in loaded_data if item is not None]
+    overly_small_text_region_training_masks = [item[4] for item in loaded_data if item is not None]
+    text_region_boundary_training_masks = [item[5] for item in loaded_data if item is not None]
+
+    print('Number of validation images : %d' % len(images))
+
+    return np.array(images), np.array(overly_small_text_region_training_masks), np.array(
+        text_region_boundary_training_masks), np.array(score_maps), np.array(geo_maps)
+
+
+# %%
 
 def generator(FLAGS):
     image_paths = np.array(get_image_paths(FLAGS.training_data_path))
