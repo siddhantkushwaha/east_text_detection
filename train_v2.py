@@ -21,6 +21,7 @@ parser.add_argument('--input_size', type=int, default=512)
 parser.add_argument('--batch_size', type=int, default=12)
 parser.add_argument('--nb_workers', type=int, default=6)
 parser.add_argument('--max_epochs', type=int, default=4)
+parser.add_argument('--init_learning_rate', type=float, default=0.0001)
 parser.add_argument('--save_checkpoint_epochs', type=int, default=2)
 
 parser.add_argument('--min_text_size', type=int, default=10)
