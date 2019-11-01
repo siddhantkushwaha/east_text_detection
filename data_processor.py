@@ -7,7 +7,6 @@ import cv2
 import numpy as np
 import pandas as pd
 
-# %%
 from shapely.geometry import Polygon
 
 
@@ -717,9 +716,3 @@ def generator(FLAGS):
             except Exception:
                 if not FLAGS.suppress_warnings_and_error_messages:
                     traceback.print_exc()
-
-
-# %%
-
-if __name__ == '__main__':
-    pass
