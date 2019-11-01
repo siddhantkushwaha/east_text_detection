@@ -4,8 +4,9 @@ import keras.backend as K
 
 from adamw import AdamW
 from losses import dice_loss, rbox_loss
-from data_processor import generator, get_image_paths, load_val_data
 from model import EAST_model
+
+from data_generator import DataGenerator
 
 parser = argparse.ArgumentParser()
 
@@ -36,9 +37,11 @@ FLAGS = parser.parse_args()
 
 
 def main():
-    train_data_generator = generator(FLAGS)
-    train_samples_count = len(get_image_paths(FLAGS.training_data_path))
-    val_data = load_val_data(FLAGS)
+    train_data_generator = DataGenerator(input_size=FLAGS.input_size, batch_size=FLAGS.batch_size,
+                                         data_path=FLAGS.training_data_path, FLAGS=FLAGS, is_train=True)
+    train_samples_count = len(train_data_generator.image_paths)
+    validation_data_generator = DataGenerator(input_size=FLAGS.input_size, batch_size=FLAGS.batch_size,
+                                              data_path=FLAGS.validation_data_path, FLAGS=FLAGS, is_train=False)
 
     east = EAST_model(FLAGS.input_size)
 
@@ -58,9 +61,12 @@ def main():
         generator=train_data_generator,
         epochs=FLAGS.max_epochs,
         steps_per_epoch=train_samples_count // FLAGS.batch_size,
+        validation_data=validation_data_generator,
+
         workers=FLAGS.nb_workers,
         use_multiprocessing=True,
         max_queue_size=10,
+
         verbose=1,
     )
 
