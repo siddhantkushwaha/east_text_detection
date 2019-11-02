@@ -34,8 +34,19 @@ FLAGS = parser.parse_args()
 
 def tensorboard_callback():
     log_dir = "logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
-    callback = TensorBoard(log_dir=log_dir)
-    return callback
+    return TensorBoard(log_dir=log_dir)
+
+
+def checkpoint_callback():
+    os.system(f'mkdir -p {FLAGS.checkpoint_path}')
+    return ModelCheckpoint(
+        filepath=os.path.join(FLAGS.checkpoint_path, 'model-{epoch:02d}-{val_loss:.2f}.h5'),
+        monitor='val_loss',
+        save_best_only=True,
+        verbose=0,
+        save_weights_only=False,
+        period=FLAGS.save_checkpoint_epochs
+    )
 
 
 def main():
@@ -63,14 +74,7 @@ def main():
     )
 
     tb_callback = tensorboard_callback()
-    checkpoint_callback = ModelCheckpoint(
-        filepath=os.path.join(FLAGS.checkpoint_path, 'model-{epoch:02d}-{val_loss:.2f}.h5'),
-        monitor='val_loss',
-        save_best_only=True,
-        verbose=0,
-        save_weights_only=False,
-        period=FLAGS.save_checkpoint_epochs
-    )
+    cp_callback = checkpoint_callback()
 
     east.model.fit_generator(
         generator=train_data_generator,
@@ -78,7 +82,7 @@ def main():
         steps_per_epoch=train_samples_count // FLAGS.batch_size,
         validation_data=validation_data_generator,
 
-        callbacks=[checkpoint_callback, tb_callback],
+        callbacks=[cp_callback, tb_callback],
 
         workers=FLAGS.nb_workers,
         use_multiprocessing=True,
