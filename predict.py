@@ -109,9 +109,10 @@ def main():
 
     model = load_model()
 
-    image_paths = get_image_paths('data/ICDAR2015/test_data')
+    image_paths = get_image_paths(FLAGS.test_data_path)
     data = list(map(lambda image_path: (image_path, get_text_file_path(image_path)), image_paths))
     for image_path, txt_path in data:
+        print(image_path)
         img = cv2.imread(image_path)
         img = img[:, :, ::-1]
         img_resized, (ratio_h, ratio_w) = resize_image(img)
