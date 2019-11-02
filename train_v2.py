@@ -44,7 +44,7 @@ def checkpoint_callback():
         monitor='val_loss',
         save_best_only=True,
         verbose=0,
-        save_weights_only=False,
+        save_weights_only=True,
         period=FLAGS.save_checkpoint_epochs
     )
 
@@ -75,6 +75,9 @@ def main():
 
     tb_callback = tensorboard_callback()
     cp_callback = checkpoint_callback()
+
+    with open(os.path.join(FLAGS.checkpoint_path, 'model.json'), 'w') as json_file:
+        json_file.write(east.model.to_json())
 
     east.model.fit_generator(
         generator=train_data_generator,

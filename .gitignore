@@ -1,5 +1,6 @@
 data/ICDAR2015
-**.idea
-**__pycache__
 tmp
 logs
+models
+**.idea
+**__pycache__
