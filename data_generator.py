@@ -27,14 +27,17 @@ class DataGenerator(Sequence):
 
         batch_image_paths = self.image_paths[index * self.batch_size:(index + 1) * self.batch_size]
         for image_path in batch_image_paths:
-            res = self.load_training(image_path) if self.is_train else self.load_validation(image_path)
-            if res is not None:
-                image, score_map, geo_map, overly_small_text_region_training_mask, text_region_boundary_training_mask = res
-                images.append(image)
-                score_maps.append(score_map)
-                geo_maps.append(geo_map)
-                overly_small_text_region_training_masks.append(overly_small_text_region_training_mask)
-                text_region_boundary_training_masks.append(text_region_boundary_training_mask)
+            try:
+                res = self.load_training(image_path) if self.is_train else self.load_validation(image_path)
+                if res is not None:
+                    image, score_map, geo_map, overly_small_text_region_training_mask, text_region_boundary_training_mask = res
+                    images.append(image)
+                    score_maps.append(score_map)
+                    geo_maps.append(geo_map)
+                    overly_small_text_region_training_masks.append(overly_small_text_region_training_mask)
+                    text_region_boundary_training_masks.append(text_region_boundary_training_mask)
+            except Exception:
+                pass
 
         return [np.array(images), np.array(overly_small_text_region_training_masks),
                 np.array(text_region_boundary_training_masks), np.array(score_maps)], [np.array(score_maps),
