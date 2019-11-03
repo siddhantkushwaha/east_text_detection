@@ -1,4 +1,5 @@
 import os
+import logging
 import argparse
 
 import cv2
@@ -12,8 +13,8 @@ from data_processor import get_image_paths, get_text_file_path, restore_rectangl
 from model import RESIZE_FACTOR
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--test_data_path', type=str, default='data/ICDAR2015/test_data/')
-parser.add_argument('--model_path', type=str, default='models/east_v1/model.h5')
+parser.add_argument('--test_data_path', type=str, default='../ICDAR2015/test_data/')
+parser.add_argument('--model_path', type=str, default='models/east/model.h5')
 parser.add_argument('--output_dir', type=str, default='out/')
 FLAGS = parser.parse_args()
 
@@ -142,4 +143,5 @@ def main():
 
 
 if __name__ == '__main__':
+    logging.getLogger().setLevel(logging.ERROR)
     main()

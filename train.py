@@ -1,4 +1,5 @@
 import os
+import logging
 import argparse
 from datetime import datetime
 
@@ -13,16 +14,16 @@ from data_generator import DataGenerator
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--training_data_path', type=str, default='data/ICDAR2015/train_data')
-parser.add_argument('--validation_data_path', type=str, default='data/ICDAR2015/val_data')
-parser.add_argument('--checkpoint_path', type=str, default='models/east_v1')
+parser.add_argument('--training_data_path', type=str, default='../ICDAR2015/train_data')
+parser.add_argument('--validation_data_path', type=str, default='../ICDAR2015/val_data')
+parser.add_argument('--checkpoint_path', type=str, default='models/east')
 
 parser.add_argument('--input_size', type=int, default=512)
 parser.add_argument('--batch_size', type=int, default=12)
-parser.add_argument('--nb_workers', type=int, default=6)
-parser.add_argument('--max_epochs', type=int, default=4)
+parser.add_argument('--nb_workers', type=int, default=16)
+parser.add_argument('--max_epochs', type=int, default=150)
 parser.add_argument('--init_learning_rate', type=float, default=0.0001)
-parser.add_argument('--save_checkpoint_epochs', type=int, default=2)
+parser.add_argument('--save_checkpoint_epochs', type=int, default=10)
 
 parser.add_argument('--min_text_size', type=int, default=10)
 parser.add_argument('--min_crop_side_ratio', type=float, default=0.1)
@@ -96,4 +97,5 @@ def main():
 
 
 if __name__ == '__main__':
+    logging.getLogger().setLevel(logging.ERROR)
     main()
