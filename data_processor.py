@@ -238,14 +238,14 @@ def sort_rectangle(FLAGS, poly):
             if not FLAGS.suppress_warnings_and_error_messages:
                 print(angle, poly[p_lowest], poly[p_lowest_right])
         if angle / np.pi * 180 > 45:
-            # 这个点为p2 - this point is p2
+            # p2 - this point is p2
             p2_index = p_lowest
             p1_index = (p2_index - 1) % 4
             p0_index = (p2_index - 2) % 4
             p3_index = (p2_index + 1) % 4
             return poly[[p0_index, p1_index, p2_index, p3_index]], -(np.pi / 2 - angle)
         else:
-            # 这个点为p3 - this point is p3
+            # p3 - this point is p3
             p3_index = p_lowest
             p0_index = (p3_index + 1) % 4
             p1_index = (p3_index + 2) % 4
