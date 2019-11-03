@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from keras.utils import Sequence
 
-from data_processor import get_image_paths, get_text_file_path, load_annotation, check_and_validate_polys, crop_area, \
+from data_processor import get_image_paths, load_annotation, check_and_validate_polys, crop_area, \
     pad_image, resize_image, generate_rbox
 
 
@@ -55,11 +55,10 @@ class DataGenerator(Sequence):
         image = cv2.imread(image_path)
         h, w, _ = image.shape
 
-        txt_path = get_text_file_path(image_path)
-        if not os.path.exists(txt_path):
+        text_polys, text_tags = load_annotation(image_path)
+        if text_polys is None:
             return
 
-        text_polys, text_tags = load_annotation(txt_path)
         text_polys, text_tags = check_and_validate_polys(FLAGS, text_polys, text_tags, (h, w))
 
         # random scale this image
@@ -112,11 +111,10 @@ class DataGenerator(Sequence):
         image = cv2.imread(image_path)
         h, w, _ = image.shape
 
-        txt_path = get_text_file_path(image_path)
-        if not os.path.exists(txt_path):
+        text_polys, text_tags = load_annotation(image_path)
+        if text_polys is None:
             return
 
-        text_polys, text_tags = load_annotation(txt_path)
         text_polys, text_tags = check_and_validate_polys(FLAGS, text_polys, text_tags, (h, w))
         image, shift_h, shift_w = pad_image(image, self.input_size, is_train=False)
         image, text_polys = resize_image(image, text_polys, self.input_size, shift_h, shift_w)

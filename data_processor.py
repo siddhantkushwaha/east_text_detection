@@ -3,6 +3,7 @@ import re
 
 import cv2
 import numpy as np
+import pandas as pd
 
 from shapely.geometry import Polygon
 
@@ -14,15 +15,31 @@ def get_image_paths(data_path):
     return files
 
 
-def get_text_file_path(image_path):
-    text_file_path = image_path.replace(os.path.basename(image_path).split('.')[1], 'txt')
-    return text_file_path
+def load_annotation(image_path):
+    change_ext = lambda x, ext: x.replace(os.path.basename(x).split('.')[1], ext)
+    text_path = change_ext(image_path, 'txt')
+    json_path = change_ext(image_path, 'json')
+
+    return load_annotation_json(json_path) if os.path.exists(json_path) \
+        else (load_annotation_txt(text_path) if os.path.exists(text_path) else (None, None))
 
 
-def load_annotation(txt_path):
-    if not os.path.exists(txt_path):
-        return np.array([], dtype=np.float32), np.array([], dtype=np.bool)
+def load_annotation_json(json_path):
+    df = pd.read_json(json_path)
 
+    def parse(row):
+        x1, y1, x2, y2, x3, y3, x4, y4 = row['line']
+        line = [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
+        label = row['text'] == '*' or row['text'] == '###'
+        return line, label
+
+    parsed = df.apply(parse, axis=1)
+    text_polys = [i[0] for i in parsed]
+    text_tags = [i[1] for i in parsed]
+    return np.array(text_polys, dtype=np.float32), np.array(text_tags, dtype=np.bool)
+
+
+def load_annotation_txt(txt_path):
     file = open(txt_path)
     lines = file.readlines()
     file.close()

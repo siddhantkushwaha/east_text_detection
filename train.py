@@ -9,7 +9,6 @@ from keras.callbacks import TensorBoard, ModelCheckpoint
 from adamw import AdamW
 from losses import dice_loss, rbox_loss
 from model import EastModel
-
 from data_generator import DataGenerator
 
 parser = argparse.ArgumentParser()
