@@ -13,8 +13,9 @@ from data_generator import DataGenerator
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--training_data_path', type=str, default='../ICDAR2015/train_data')
-parser.add_argument('--validation_data_path', type=str, default='../ICDAR2015/val_data')
+parser.add_argument('--training_data_path', type=str, default='../funsd_parsed/train_data')
+parser.add_argument('--validation_data_path', type=str, default='../funsd_parsed/val_data')
+parser.add_argument('--pretrained_weights_path', type=str, default='models/east/model-icdar2015.h5')
 parser.add_argument('--checkpoint_path', type=str, default='models/east')
 
 parser.add_argument('--input_size', type=int, default=512)
@@ -57,6 +58,9 @@ def main():
                                               data_path=FLAGS.validation_data_path, FLAGS=FLAGS, is_train=False)
 
     east = EastModel(FLAGS.input_size)
+    if FLAGS.pretrained_weights_path != '':
+        print(f'Loading pre-trained model at {FLAGS.pretrained_weights_path}')
+        east.model.load_weights(FLAGS.pretrained_weights_path)
 
     score_map_loss_weight = K.variable(0.01, name='score_map_loss_weight')
     small_text_weight = K.variable(0., name='small_text_weight')
