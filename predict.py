@@ -9,11 +9,11 @@ import tensorflow as tf
 from keras.models import model_from_json
 
 import lanms
-from data_processor import get_image_paths, get_text_file_path, restore_rectangle
+from data_processor import get_image_paths, restore_rectangle
 from model import RESIZE_FACTOR
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--test_data_path', type=str, default='../ICDAR2015/test_data/')
+parser.add_argument('--test_data_path', type=str, default='../funsd_parsed/test_data')
 parser.add_argument('--model_path', type=str, default='models/east/model.h5')
 parser.add_argument('--output_dir', type=str, default='out/')
 FLAGS = parser.parse_args()
@@ -111,8 +111,7 @@ def main():
     model = load_model()
 
     image_paths = get_image_paths(FLAGS.test_data_path)
-    data = list(map(lambda image_path: (image_path, get_text_file_path(image_path)), image_paths))
-    for image_path, txt_path in data:
+    for image_path in image_paths:
         print(image_path)
         img = cv2.imread(image_path)
         img = img[:, :, ::-1]
@@ -136,7 +135,7 @@ def main():
                     f.write('{},{},{},{},{},{},{},{}\r\n'.format(box[0, 0], box[0, 1], box[1, 0], box[1, 1], box[2, 0],
                                                                  box[2, 1], box[3, 0], box[3, 1], ))
                     cv2.polylines(img[:, :, ::-1], [box.astype(np.int32).reshape((-1, 1, 2))], True,
-                                  color=(255, 255, 0), thickness=1)
+                                  color=(0, 0, 255), thickness=1)
 
             out_image_path = os.path.join(FLAGS.output_dir, os.path.basename(image_path))
             cv2.imwrite(out_image_path, img[:, :, ::-1])
