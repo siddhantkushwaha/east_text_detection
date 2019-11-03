@@ -1,11 +1,13 @@
+import numpy as np
+
+import tensorflow as tf
+import keras.backend as K
+from keras import regularizers
+
 from keras.applications.resnet50 import ResNet50
 from keras.models import Model
 from keras.layers import Conv2D, concatenate, BatchNormalization, Lambda, Input, ZeroPadding2D, \
     Activation
-from keras import regularizers
-import keras.backend as K
-import tensorflow as tf
-import numpy as np
 
 RESIZE_FACTOR = 2
 
@@ -22,7 +24,7 @@ def resize_output_shape(input_shape):
     return tuple(shape)
 
 
-class EAST_model:
+class EastModel:
 
     def __init__(self, input_size=512):
         input_image = Input(shape=(None, None, 3), name='input_image')

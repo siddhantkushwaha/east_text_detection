@@ -1,11 +1,9 @@
+from six.moves import zip
+
 from keras.optimizers import Optimizer
 from keras import backend as K
-import six
-import copy
-from six.moves import zip
-from keras.utils.generic_utils import serialize_keras_object
-from keras.utils.generic_utils import deserialize_keras_object
 from keras.legacy import interfaces
+
 
 class AdamW(Optimizer):
     """Adam optimizer.
@@ -32,7 +30,7 @@ class AdamW(Optimizer):
             self.beta_1 = K.variable(beta_1, name='beta_1')
             self.beta_2 = K.variable(beta_2, name='beta_2')
             self.decay = K.variable(decay, name='decay')
-            self.wd = K.variable(weight_decay, name='weight_decay') # decoupled weight decay (2/4)
+            self.wd = K.variable(weight_decay, name='weight_decay')  # decoupled weight decay (2/4)
         self.epsilon = epsilon
         self.initial_decay = decay
 
@@ -40,7 +38,7 @@ class AdamW(Optimizer):
     def get_updates(self, loss, params):
         grads = self.get_gradients(loss, params)
         self.updates = [K.update_add(self.iterations, 1)]
-        wd = self.wd # decoupled weight decay (3/4)
+        wd = self.wd  # decoupled weight decay (3/4)
 
         lr = self.lr
         if self.initial_decay > 0:
@@ -58,7 +56,7 @@ class AdamW(Optimizer):
         for p, g, m, v in zip(params, grads, ms, vs):
             m_t = (self.beta_1 * m) + (1. - self.beta_1) * g
             v_t = (self.beta_2 * v) + (1. - self.beta_2) * K.square(g)
-            p_t = p - lr_t * m_t / (K.sqrt(v_t) + self.epsilon) - lr * wd * p # decoupled weight decay (4/4)
+            p_t = p - lr_t * m_t / (K.sqrt(v_t) + self.epsilon) - lr * wd * p  # decoupled weight decay (4/4)
 
             self.updates.append(K.update(m, m_t))
             self.updates.append(K.update(v, v_t))
