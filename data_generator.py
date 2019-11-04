@@ -1,8 +1,6 @@
-import os
-
 import cv2
 import numpy as np
-from keras.utils import Sequence
+from tensorflow.keras.utils import Sequence
 
 from data_processor import get_image_paths, load_annotation, check_and_validate_polys, crop_area, \
     pad_image, resize_image, generate_rbox

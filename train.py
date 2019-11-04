@@ -4,10 +4,10 @@ import argparse
 from datetime import datetime
 
 import tensorflow as tf
-import keras.backend as K
-from keras.callbacks import TensorBoard, ModelCheckpoint
+import tensorflow.keras.backend as K
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 
-from adamw import AdamW
 from losses import dice_loss, rbox_loss
 from model import EastModel
 from data_generator import DataGenerator
@@ -66,7 +66,7 @@ def main():
     score_map_loss_weight = K.variable(0.01, name='score_map_loss_weight')
     small_text_weight = K.variable(0., name='small_text_weight')
 
-    opt = AdamW(FLAGS.init_learning_rate)
+    opt = Adam(FLAGS.init_learning_rate, 'adam')
 
     east.model.compile(
         loss=[
@@ -79,42 +79,47 @@ def main():
         optimizer=opt,
     )
 
+    model = east.model
+
     try:
         device_name = os.environ['COLAB_TPU_ADDR']
         TPU_ADDRESS = 'grpc://' + device_name
         print('Found TPU at: {}'.format(TPU_ADDRESS))
+
+        # TPU found, compile model for TPU
+        model = tf.contrib.tpu.keras_to_tpu_model(
+            model,
+            strategy=tf.contrib.tpu.TPUDistributionStrategy(
+                tf.contrib.cluster_resolver.TPUClusterResolver(TPU_ADDRESS)))
+
     except KeyError:
         print('TPU not found')
 
-    tpu_model = tf.contrib.tpu.keras_to_tpu_model(
-        east.model,
-        strategy=tf.contrib.tpu.TPUDistributionStrategy(
-            tf.contrib.cluster_resolver.TPUClusterResolver(TPU_ADDRESS)))
-
-    tpu_model.summary()
+    model.summary()
 
     # tb_callback = tensorboard_callback()
     # cp_callback = checkpoint_callback()
 
-    # with open(os.path.join(FLAGS.checkpoint_path, 'model.json'), 'w') as json_file:
-    #     json_file.write(east.model.to_json())
-    #
-    # east.model.fit_generator(
-    #     generator=train_data_generator,
-    #     epochs=FLAGS.max_epochs,
-    #     steps_per_epoch=train_samples_count // FLAGS.batch_size,
-    #     validation_data=validation_data_generator,
-    #
-    #     callbacks=[cp_callback, tb_callback],
-    #
-    #     workers=FLAGS.nb_workers,
-    #     use_multiprocessing=True,
-    #     max_queue_size=10,
-    #
-    #     verbose=1,
-    # )
+    with open(os.path.join(FLAGS.checkpoint_path, 'model.json'), 'w') as json_file:
+        json_file.write(model.to_json())
+
+    east.model.fit_generator(
+        generator=train_data_generator,
+        epochs=FLAGS.max_epochs,
+        steps_per_epoch=train_samples_count // FLAGS.batch_size,
+        validation_data=validation_data_generator,
+
+        # callbacks=[cp_callback, tb_callback],
+
+        workers=FLAGS.nb_workers,
+        use_multiprocessing=True,
+        max_queue_size=10,
+
+        verbose=1,
+    )
 
 
+tf.compat.v1.disable_eager_execution()
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.ERROR)
     main()

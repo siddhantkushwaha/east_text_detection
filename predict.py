@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 
 import tensorflow as tf
-from keras.models import model_from_json
+from tensorflow.keras.models import model_from_json
 
 import lanms
 from data_processor import get_image_paths, restore_rectangle
