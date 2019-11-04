@@ -3,6 +3,7 @@ import logging
 import argparse
 from datetime import datetime
 
+import tensorflow as tf
 import tensorflow.keras.backend as K
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
@@ -57,7 +58,21 @@ def main():
     validation_data_generator = DataGenerator(input_size=FLAGS.input_size, batch_size=FLAGS.batch_size,
                                               data_path=FLAGS.validation_data_path, FLAGS=FLAGS, is_train=False)
 
-    east = EastModel(FLAGS.input_size)
+    try:
+        device_name = os.environ['COLAB_TPU_ADDR']
+        TPU_ADDRESS = 'grpc://' + device_name
+        print('Found TPU at: {}'.format(TPU_ADDRESS))
+
+        strategy = tf.distribute.experimental.TPUStrategy(
+            tf.contrib.cluster_resolver.TPUClusterResolver(TPU_ADDRESS))
+
+        with strategy.scope():
+            east = EastModel(FLAGS.input_size)
+
+    except KeyError:
+        print('TPU not found')
+        east = EastModel(FLAGS.input_size)
+
     if FLAGS.pretrained_weights_path != '':
         print(f'Loading pre-trained model at {FLAGS.pretrained_weights_path}')
         east.model.load_weights(FLAGS.pretrained_weights_path)
@@ -78,14 +93,11 @@ def main():
         optimizer=opt,
     )
 
-    model = east.model
-    model.summary()
-
     tb_callback = tensorboard_callback()
     cp_callback = checkpoint_callback()
 
     with open(os.path.join(FLAGS.checkpoint_path, 'model.json'), 'w') as json_file:
-        json_file.write(model.to_json())
+        json_file.write(east.model.to_json())
 
     east.model.fit_generator(
         generator=train_data_generator,
