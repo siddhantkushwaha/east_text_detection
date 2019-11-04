@@ -59,19 +59,22 @@ def main():
                                               data_path=FLAGS.validation_data_path, FLAGS=FLAGS, is_train=False)
 
     try:
-        device_name = os.environ['COLAB_TPU_ADDR']
-        TPU_ADDRESS = 'grpc://' + device_name
-        print('Found TPU at: {}'.format(TPU_ADDRESS))
+        tpu = tf.distribute.cluster_resolver.TPUClusterResolver()
+    except ValueError:
+        tpu = None
+    if tpu:
+        tf.tpu.experimental.initialize_tpu_system(tpu)
+        strategy = tf.distribute.experimental.TPUStrategy(tpu, steps_per_run=128)
+        print('Running on TPU ', tpu.cluster_spec().as_dict()['worker'])
+    else:
+        strategy = tf.distribute.get_strategy()
+        print('Running on CPU/GPU instead')
+    print("Number of accelerators: ", strategy.num_replicas_in_sync)
 
-        strategy = tf.distribute.experimental.TPUStrategy(
-            tf.contrib.cluster_resolver.TPUClusterResolver(TPU_ADDRESS))
+    with strategy.scope():
+        east = EastModel(input_size=FLAGS.input_size)
 
-        with strategy.scope():
-            east = EastModel(FLAGS.input_size)
-
-    except KeyError:
-        print('TPU not found')
-        east = EastModel(FLAGS.input_size)
+    east.model.summary()
 
     if FLAGS.pretrained_weights_path != '':
         print(f'Loading pre-trained model at {FLAGS.pretrained_weights_path}')
