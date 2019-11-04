@@ -3,6 +3,7 @@ import logging
 import argparse
 from datetime import datetime
 
+import tensorflow as tf
 import keras.backend as K
 from keras.callbacks import TensorBoard, ModelCheckpoint
 
@@ -13,14 +14,14 @@ from data_generator import DataGenerator
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--training_data_path', type=str, default='../funsd_parsed/train_data')
-parser.add_argument('--validation_data_path', type=str, default='../funsd_parsed/val_data')
-parser.add_argument('--pretrained_weights_path', type=str, default='models/east/model-icdar2015.h5')
+parser.add_argument('--training_data_path', type=str, default='../ICDAR2015/train_data')
+parser.add_argument('--validation_data_path', type=str, default='../ICDAR2015/val_data')
+parser.add_argument('--pretrained_weights_path', type=str, default='')
 parser.add_argument('--checkpoint_path', type=str, default='models/east')
 
 parser.add_argument('--input_size', type=int, default=512)
 parser.add_argument('--batch_size', type=int, default=12)
-parser.add_argument('--nb_workers', type=int, default=16)
+parser.add_argument('--nb_workers', type=int, default=6)
 parser.add_argument('--max_epochs', type=int, default=150)
 parser.add_argument('--init_learning_rate', type=float, default=0.0001)
 parser.add_argument('--save_checkpoint_epochs', type=int, default=10)
@@ -66,6 +67,7 @@ def main():
     small_text_weight = K.variable(0., name='small_text_weight')
 
     opt = AdamW(FLAGS.init_learning_rate)
+
     east.model.compile(
         loss=[
             dice_loss(east.overly_small_text_region_training_mask, east.text_region_boundary_training_mask,
@@ -77,26 +79,40 @@ def main():
         optimizer=opt,
     )
 
-    tb_callback = tensorboard_callback()
-    cp_callback = checkpoint_callback()
+    try:
+        device_name = os.environ['COLAB_TPU_ADDR']
+        TPU_ADDRESS = 'grpc://' + device_name
+        print('Found TPU at: {}'.format(TPU_ADDRESS))
+    except KeyError:
+        print('TPU not found')
 
-    with open(os.path.join(FLAGS.checkpoint_path, 'model.json'), 'w') as json_file:
-        json_file.write(east.model.to_json())
+    tpu_model = tf.contrib.tpu.keras_to_tpu_model(
+        east.model,
+        strategy=tf.contrib.tpu.TPUDistributionStrategy(
+            tf.contrib.cluster_resolver.TPUClusterResolver(TPU_ADDRESS)))
 
-    east.model.fit_generator(
-        generator=train_data_generator,
-        epochs=FLAGS.max_epochs,
-        steps_per_epoch=train_samples_count // FLAGS.batch_size,
-        validation_data=validation_data_generator,
+    tpu_model.summary()
 
-        callbacks=[cp_callback, tb_callback],
+    # tb_callback = tensorboard_callback()
+    # cp_callback = checkpoint_callback()
 
-        workers=FLAGS.nb_workers,
-        use_multiprocessing=True,
-        max_queue_size=10,
-
-        verbose=1,
-    )
+    # with open(os.path.join(FLAGS.checkpoint_path, 'model.json'), 'w') as json_file:
+    #     json_file.write(east.model.to_json())
+    #
+    # east.model.fit_generator(
+    #     generator=train_data_generator,
+    #     epochs=FLAGS.max_epochs,
+    #     steps_per_epoch=train_samples_count // FLAGS.batch_size,
+    #     validation_data=validation_data_generator,
+    #
+    #     callbacks=[cp_callback, tb_callback],
+    #
+    #     workers=FLAGS.nb_workers,
+    #     use_multiprocessing=True,
+    #     max_queue_size=10,
+    #
+    #     verbose=1,
+    # )
 
 
 if __name__ == '__main__':

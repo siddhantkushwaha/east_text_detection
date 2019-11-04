@@ -1,11 +1,9 @@
 import numpy as np
 
 import tensorflow as tf
-import keras.backend as K
-from keras import regularizers
+from keras import regularizers, Model
 
 from keras.applications.resnet50 import ResNet50
-from keras.models import Model
 from keras.layers import Conv2D, concatenate, BatchNormalization, Lambda, Input, ZeroPadding2D, \
     Activation
 
@@ -13,7 +11,7 @@ RESIZE_FACTOR = 2
 
 
 def resize_bilinear(x):
-    return tf.image.resize_bilinear(x, size=[K.shape(x)[1] * RESIZE_FACTOR, K.shape(x)[2] * RESIZE_FACTOR])
+    return tf.image.resize_bilinear(x, size=[x.shape[1] * RESIZE_FACTOR, x.shape[2] * RESIZE_FACTOR])
 
 
 def resize_output_shape(input_shape):
@@ -27,14 +25,16 @@ def resize_output_shape(input_shape):
 class EastModel:
 
     def __init__(self, input_size=512):
-        input_image = Input(shape=(None, None, 3), name='input_image')
-        overly_small_text_region_training_mask = Input(shape=(None, None, 1),
+        input_image = Input(shape=(input_size, input_size, 3), name='input_image')
+        overly_small_text_region_training_mask = Input(shape=(input_size // 4, input_size // 4, 1),
                                                        name='overly_small_text_region_training_mask')
-        text_region_boundary_training_mask = Input(shape=(None, None, 1), name='text_region_boundary_training_mask')
-        target_score_map = Input(shape=(None, None, 1), name='target_score_map')
-        resnet = ResNet50(input_tensor=input_image, weights='imagenet', include_top=False, pooling=None)
-        x = resnet.get_layer('activation_49').output
+        text_region_boundary_training_mask = Input(shape=(input_size // 4, input_size // 4, 1),
+                                                   name='text_region_boundary_training_mask')
+        target_score_map = Input(shape=(input_size // 4, input_size // 4, 1), name='target_score_map')
 
+        resnet = ResNet50(input_tensor=input_image, weights='imagenet', include_top=False, pooling=None)
+
+        x = resnet.get_layer('activation_49').output
         x = Lambda(resize_bilinear, name='resize_1')(x)
         x = concatenate([x, resnet.get_layer('activation_40').output], axis=3)
         x = Conv2D(128, (1, 1), padding='same', kernel_regularizer=regularizers.l2(1e-5))(x)
