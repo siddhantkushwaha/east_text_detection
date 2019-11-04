@@ -3,7 +3,6 @@ import logging
 import argparse
 from datetime import datetime
 
-import tensorflow as tf
 import tensorflow.keras.backend as K
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
@@ -104,7 +103,6 @@ def main():
     )
 
 
-tf.compat.v1.disable_eager_execution()
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.ERROR)
     main()
