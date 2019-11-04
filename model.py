@@ -111,4 +111,4 @@ class EastModel:
 
 
 if __name__ == '__main__':
-    EAST()
+    EastModel()
