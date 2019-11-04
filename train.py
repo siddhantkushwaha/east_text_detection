@@ -80,25 +80,10 @@ def main():
     )
 
     model = east.model
-
-    try:
-        device_name = os.environ['COLAB_TPU_ADDR']
-        TPU_ADDRESS = 'grpc://' + device_name
-        print('Found TPU at: {}'.format(TPU_ADDRESS))
-
-        # TPU found, compile model for TPU
-        model = tf.contrib.tpu.keras_to_tpu_model(
-            model,
-            strategy=tf.contrib.tpu.TPUDistributionStrategy(
-                tf.contrib.cluster_resolver.TPUClusterResolver(TPU_ADDRESS)))
-
-    except KeyError:
-        print('TPU not found')
-
     model.summary()
 
-    # tb_callback = tensorboard_callback()
-    # cp_callback = checkpoint_callback()
+    tb_callback = tensorboard_callback()
+    cp_callback = checkpoint_callback()
 
     with open(os.path.join(FLAGS.checkpoint_path, 'model.json'), 'w') as json_file:
         json_file.write(model.to_json())
@@ -109,7 +94,7 @@ def main():
         steps_per_epoch=train_samples_count // FLAGS.batch_size,
         validation_data=validation_data_generator,
 
-        # callbacks=[cp_callback, tb_callback],
+        callbacks=[cp_callback, tb_callback],
 
         workers=FLAGS.nb_workers,
         use_multiprocessing=True,
