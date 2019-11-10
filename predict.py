@@ -13,20 +13,20 @@ from data_processor import get_image_paths, restore_rectangle
 from model import RESIZE_FACTOR
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--test_data_path', type=str, default='../funsd_parsed/test_data')
-parser.add_argument('--model_path', type=str, default='models/east/model.h5')
+parser.add_argument('--test_data_path', type=str, default='../../funsd_parsed/test_data')
+parser.add_argument('--model_path', type=str, default='models/east/model-funsd400.h5')
 parser.add_argument('--output_dir', type=str, default='out/')
 FLAGS = parser.parse_args()
 
 
-def load_model():
-    json_path = '/'.join(FLAGS.model_path.split('/')[0:-1])
+def load_model(model_path):
+    json_path = '/'.join(model_path.split('/')[0:-1])
     file = open(os.path.join(json_path, 'model.json'), 'r')
     model_json = file.read()
     file.close()
 
     model = model_from_json(model_json, custom_objects={'tf': tf, 'RESIZE_FACTOR': RESIZE_FACTOR})
-    model.load_weights(FLAGS.model_path)
+    model.load_weights(model_path)
     return model
 
 
@@ -133,7 +133,7 @@ def process_image(model, img):
 def main():
     os.system(f'mkdir -p {FLAGS.output_dir}')
 
-    model = load_model()
+    model = load_model(model_path=FLAGS.model_path)
 
     image_paths = get_image_paths(FLAGS.test_data_path)
     for image_path in image_paths:
@@ -147,10 +147,10 @@ def main():
             for box in boxes:
                 f.write('{},{},{},{},{},{},{},{}\r\n'.format(box[0, 0], box[0, 1], box[1, 0], box[1, 1], box[2, 0],
                                                              box[2, 1], box[3, 0], box[3, 1]))
-                cv2.polylines(img[:, :, ::-1], [box.astype(np.int32).reshape((-1, 1, 2))], True,
+                cv2.polylines(img, [box.astype(np.int32).reshape((-1, 1, 2))], True,
                               color=(0, 0, 255), thickness=1)
         out_image_path = os.path.join(FLAGS.output_dir, os.path.basename(image_path))
-        cv2.imwrite(out_image_path, img[:, :, ::-1])
+        cv2.imwrite(out_image_path, img)
 
 
 if __name__ == '__main__':

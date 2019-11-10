@@ -6,4 +6,3 @@ opencv-python==4.1.1.26
 shapely==1.6.4.post2
 Pillow==6.2.1
 Flask==1.1.1
-requests==2.22.0
