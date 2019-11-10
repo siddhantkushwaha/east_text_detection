@@ -105,15 +105,9 @@ def sort_poly(p):
         return p[[0, 3, 2, 1]]
 
 
-def main():
-    os.system(f'mkdir -p {FLAGS.output_dir}')
-
-    model = load_model()
-
-    image_paths = get_image_paths(FLAGS.test_data_path)
-    for image_path in image_paths:
-        print(image_path)
-        img = cv2.imread(image_path)
+def process_image(model, img):
+    final_boxes = []
+    try:
         img = img[:, :, ::-1]
         img_resized, (ratio_h, ratio_w) = resize_image(img)
         img_resized = (img_resized / 127.5) - 1
@@ -126,19 +120,37 @@ def main():
             boxes[:, :, 0] /= ratio_w
             boxes[:, :, 1] /= ratio_h
 
-            res_file = os.path.join(FLAGS.output_dir, '{}.txt'.format(os.path.basename(image_path).split('.')[0]))
-            with open(res_file, 'w') as f:
-                for box in boxes:
-                    box = sort_poly(box.astype(np.int32))
-                    if np.linalg.norm(box[0] - box[1]) < 5 or np.linalg.norm(box[3] - box[0]) < 5:
-                        continue
-                    f.write('{},{},{},{},{},{},{},{}\r\n'.format(box[0, 0], box[0, 1], box[1, 0], box[1, 1], box[2, 0],
-                                                                 box[2, 1], box[3, 0], box[3, 1], ))
-                    cv2.polylines(img[:, :, ::-1], [box.astype(np.int32).reshape((-1, 1, 2))], True,
-                                  color=(0, 0, 255), thickness=1)
+            for box in boxes:
+                box = sort_poly(box.astype(np.int32))
+                if np.linalg.norm(box[0] - box[1]) < 5 or np.linalg.norm(box[3] - box[0]) < 5:
+                    continue
+                final_boxes.append(box)
+    except Exception as e:
+        print(str(e))
+    return final_boxes
 
-            out_image_path = os.path.join(FLAGS.output_dir, os.path.basename(image_path))
-            cv2.imwrite(out_image_path, img[:, :, ::-1])
+
+def main():
+    os.system(f'mkdir -p {FLAGS.output_dir}')
+
+    model = load_model()
+
+    image_paths = get_image_paths(FLAGS.test_data_path)
+    for image_path in image_paths:
+        print(image_path)
+
+        img = cv2.imread(image_path)
+        boxes = process_image(model, img)
+
+        res_file = os.path.join(FLAGS.output_dir, '{}.txt'.format(os.path.basename(image_path).split('.')[0]))
+        with open(res_file, 'w') as f:
+            for box in boxes:
+                f.write('{},{},{},{},{},{},{},{}\r\n'.format(box[0, 0], box[0, 1], box[1, 0], box[1, 1], box[2, 0],
+                                                             box[2, 1], box[3, 0], box[3, 1]))
+                cv2.polylines(img[:, :, ::-1], [box.astype(np.int32).reshape((-1, 1, 2))], True,
+                              color=(0, 0, 255), thickness=1)
+        out_image_path = os.path.join(FLAGS.output_dir, os.path.basename(image_path))
+        cv2.imwrite(out_image_path, img[:, :, ::-1])
 
 
 if __name__ == '__main__':
