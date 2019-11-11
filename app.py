@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from PIL import Image
 
 import numpy as np
+import cv2
 import tensorflow as tf
 
 import logging
@@ -20,7 +21,7 @@ def index():
 def process():
     image_buf = request.files['image']
     image = Image.open(image_buf).convert('RGB')
-    image = np.array(image)
+    image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
     global graph
     with graph.as_default():
@@ -38,4 +39,4 @@ if __name__ == '__main__':
     logging.getLogger().setLevel(logging.ERROR)
     model = load_model(model_path='models/east/model-funsd150-icdar200.h5')
     graph = tf.get_default_graph()
-    app.run(host='0.0.0.0', port=6006)
+    app.run(host='127.0.0.1', port=5001)
