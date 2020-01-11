@@ -38,10 +38,14 @@ class DataGenerator(Sequence):
                     text_region_boundary_training_masks.append(text_region_boundary_training_mask)
             except Exception:
                 pass
-
-        return [np.array(images), np.array(overly_small_text_region_training_masks),
+        A, B = [np.array(images), np.array(overly_small_text_region_training_masks),
                 np.array(text_region_boundary_training_masks), np.array(score_maps)], [np.array(score_maps),
                                                                                        np.array(geo_maps)]
+
+        if self.is_valid(A, B):
+            return A, B
+        else:
+            return self.__getitem__(index)
 
     def __len__(self):
         return int(np.ceil(len(self.image_paths) / float(self.batch_size)))
@@ -131,3 +135,12 @@ class DataGenerator(Sequence):
             overly_small_text_region_training_mask[::4, ::4, np.newaxis].astype(np.float32),
             text_region_boundary_training_mask[::4, ::4, np.newaxis].astype(np.float32)
         )
+
+    def is_valid(self, A, B):
+        for a in A:
+            if len(a.shape) < 4:
+                return False
+        for b in B:
+            if len(b.shape) < 4:
+                return False
+        return True
